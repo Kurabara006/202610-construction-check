@@ -1,0 +1,300 @@
+:root {
+  --bg: #eef1f5;
+  --surface: #fff;
+  --text: #1c1c1e;
+  --muted: #636366;
+  --border: #d8dce3;
+  --accent: #007aff;
+  --accent-pressed: #0062cc;
+  --danger: #ff3b30;
+  --ok: #34c759;
+  --radius: 10px;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 12px 14px 40px;
+}
+
+h1 {
+  font-size: 1.25rem;
+  margin: 0 0 4px;
+}
+
+.lead {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.card h2 {
+  font-size: 0.95rem;
+  margin: 0 0 10px;
+}
+
+label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin: 10px 0 4px;
+}
+
+input[type='text'],
+input[type='date'],
+textarea {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.btn-row,
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+button,
+.file-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button.primary:active {
+  background: var(--accent-pressed);
+}
+
+button.danger {
+  color: var(--danger);
+  border-color: #ffc9c5;
+  background: #fff5f4;
+}
+
+button:disabled,
+.file-btn.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+input[type='file'] {
+  display: none;
+}
+
+.file-btn {
+  display: inline-block;
+}
+
+.report-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.report-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: 8px;
+}
+
+.report-list .meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.photo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.photo-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  background: #fafbfc;
+}
+
+.photo-item img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  background: #111;
+  border-radius: 6px;
+}
+
+.photo-item .row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 28px 12px;
+  font-size: 0.875rem;
+}
+
+.save-toast {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: #1c1c1e;
+  color: #fff;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
+}
+
+.save-toast.ok {
+  background: #1b5e20;
+}
+
+.save-toast.err {
+  background: #b71c1c;
+}
+
+.hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+/* --- PC / 印刷ビュー --- */
+.view-pc .print-sheet {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.print-header {
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.print-header dl {
+  margin: 8px 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  font-size: 0.875rem;
+}
+
+.print-header dt {
+  color: var(--muted);
+}
+
+.print-record {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.print-record img {
+  width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.print-record .num {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.print-record .comment {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 14mm;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .no-print,
+  .save-toast {
+    display: none !important;
+  }
+
+  .app {
+    max-width: none;
+    padding: 0;
+  }
+
+  .view-pc .print-sheet {
+    border: none;
+    padding: 0;
+  }
+
+  .print-record {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
