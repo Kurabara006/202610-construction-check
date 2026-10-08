@@ -10,7 +10,13 @@ Node.js・ビルドツール・フレームワークは使いません。
 
 ## スマホからすぐ試す（GitHub Pages）
 
-**main** にマージ後、リポジトリの **Settings → Pages → Build and deployment: GitHub Actions** を有効にすると公開されます。
+コードは **main にマージ済み** です。**初回だけ** 次の 1 操作が必要です（GitHub アプリまたはブラウザから可能）。
+
+1. リポジトリ `Kurabara006/202610-construction-check` を開く  
+2. **Settings** → **Pages**  
+3. **Build and deployment** の **Source** を **GitHub Actions** に変更して保存  
+
+数十秒後、Actions の「Deploy GitHub Pages」が成功すると公開されます。失敗していた場合は **Actions** タブから該当 workflow を **Re-run** してください。
 
 ### コピペ用 URL（公開後）
 
