@@ -126,6 +126,31 @@ input[type='file'] {
   display: inline-block;
 }
 
+.hero-add-photo {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 1.125rem;
+  font-weight: 600;
+  padding: 18px 16px;
+  margin-bottom: 14px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.hero-add-photo:active {
+  transform: scale(0.99);
+}
+
+.photo-item input[type='text'] {
+  margin-bottom: 8px;
+}
+
+.print-record .photo-location {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
 .report-list {
   list-style: none;
   margin: 0;
