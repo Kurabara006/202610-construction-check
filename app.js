@@ -631,11 +631,11 @@
           <h1>写真・コメント記録</h1>
           <p class="lead">撮影とコメントを端末内に保存し、ZIPでPCへ持ち出して印刷できます。</p>
           <button type="button" class="primary hero-new-report" id="btn-new-report">新規レポート</button>
+          ${items}
           <div class="hint-block">
             <p class="hint"><strong>保存場所:</strong> 撮影・追加した写真は、端末の「写真」アプリのフォルダには<strong>自動では入りません</strong>。このサイトを開いている<strong>ブラウザ内</strong>（アプリの記録領域）に保存されます。機種によってはカメラ撮影時に OS がカメラロールへ残すことがありますが、報告用データの正本はブラウザ内です。</p>
             <p class="hint"><strong>バックアップ:</strong> 長期保管・PC 利用は、各レポートの<strong> ZIP 出力</strong>で端末のダウンロードフォルダ等へ保存してください。ブラウザのデータ削除やキャッシュクリアで記録が消えることがあります。</p>
           </div>
-          ${items}
         `;
 
         document.getElementById('btn-new-report').onclick = () => {
@@ -701,8 +701,6 @@
             <div class="photo-thumb-square"><img src="${p.objectUrl || p.file}" alt="" /></div>
             <label for="loc-${p.id}">場所</label>
             <input type="text" id="loc-${p.id}" data-location="${p.id}" value="${escapeHtml(p.location)}" placeholder="例: 2F 北側外壁" />
-            <label for="cmt-${p.id}">コメント</label>
-            <textarea id="cmt-${p.id}" data-comment="${p.id}">${escapeHtml(p.comment)}</textarea>
             <div class="row">
               <button type="button" data-up="${p.id}" ${idx === 0 ? 'disabled' : ''}>上へ</button>
               <button type="button" data-down="${p.id}" ${idx === photos.length - 1 ? 'disabled' : ''}>下へ</button>
@@ -711,6 +709,24 @@
           </li>`,
             )
             .join('')}</ul>`;
+
+    const commentsHtml = `
+      <div class="card comments-section">
+        <h2>コメント</h2>
+        <label for="f-memo">メモ（任意）</label>
+        <textarea id="f-memo">${escapeHtml(r.memo)}</textarea>
+        ${
+          photos.length
+            ? photos
+                .map(
+                  (p, idx) => `
+          <label for="cmt-${p.id}">写真 ${idx + 1} のコメント</label>
+          <textarea id="cmt-${p.id}" data-comment="${p.id}">${escapeHtml(p.comment)}</textarea>`,
+                )
+                .join('')
+            : ''
+        }
+      </div>`;
 
     appEl.innerHTML = `
       <header class="page-header">
@@ -731,13 +747,12 @@
         <input id="f-title" type="text" value="${escapeHtml(r.title)}" />
         <label for="f-date">調査日</label>
         <input id="f-date" type="date" value="${escapeHtml(r.surveyDate)}" />
-        <label for="f-memo">メモ（任意）</label>
-        <textarea id="f-memo">${escapeHtml(r.memo)}</textarea>
       </div>
       <div class="card">
         <h2>写真一覧</h2>
         ${photoHtml}
       </div>
+      ${commentsHtml}
       <div class="toolbar">
         <button type="button" class="primary" id="btn-export-zip">ZIP出力</button>
       </div>
@@ -857,9 +872,7 @@
           <li class="photo-item" data-photo-id="${p.id}">
             <div class="photo-thumb-square"><img src="${p.objectUrl || p.file}" alt="" /></div>
             <label>場所</label>
-            <input type="text" data-pc-location="${p.id}" value="${escapeHtml(p.location)}" ${editable ? '' : 'readonly'} />
-            <label>コメント</label>
-            <textarea data-pc-comment="${p.id}" ${editable ? '' : 'readonly'}>${escapeHtml(p.comment)}</textarea>
+            <input type="text" data-pc-location="${p.id}" value="${escapeHtml(p.location)}" />
             <div class="row">
               <button type="button" data-pc-up="${p.id}" ${idx === 0 ? 'disabled' : ''}>上へ</button>
               <button type="button" data-pc-down="${p.id}" ${idx === photos.length - 1 ? 'disabled' : ''}>下へ</button>
@@ -868,6 +881,26 @@
           </li>`,
             )
             .join('')}</ul>`
+        : '';
+
+    const pcCommentsSection =
+      editable
+        ? `<div class="card comments-section no-print">
+        <h2>コメント</h2>
+        <label for="pc-memo">メモ（任意）</label>
+        <textarea id="pc-memo">${escapeHtml(report.memo)}</textarea>
+        ${
+          photos.length
+            ? photos
+                .map(
+                  (p, idx) => `
+          <label for="pc-cmt-${p.id}">写真 ${idx + 1} のコメント</label>
+          <textarea id="pc-cmt-${p.id}" data-pc-comment="${p.id}">${escapeHtml(p.comment)}</textarea>`,
+                )
+                .join('')
+            : ''
+        }
+      </div>`
         : '';
 
     appEl.innerHTML = `
@@ -889,10 +922,9 @@
         <input id="pc-title" type="text" value="${escapeHtml(report.title)}" ${editable ? '' : 'readonly'} />
         <label>調査日</label>
         <input id="pc-date" type="date" value="${escapeHtml(report.surveyDate)}" ${editable ? '' : 'readonly'} />
-        <label>メモ</label>
-        <textarea id="pc-memo" ${editable ? '' : 'readonly'}>${escapeHtml(report.memo)}</textarea>
       </div>
       ${editPhotos}
+      ${pcCommentsSection}
       <section class="print-sheet">
         <header class="print-header">
           <h1>${escapeHtml(report.title)}</h1>
