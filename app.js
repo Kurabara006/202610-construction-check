@@ -13,7 +13,7 @@
   let saveUiState = 'idle';
   let saveUiTimer = null;
 
-  /** @typedef {{ id: string, file: string, fileName: string, takenAt: string, comment: string, order: number, blob?: Blob, objectUrl?: string }} PhotoMeta */
+  /** @typedef {{ id: string, file: string, fileName: string, takenAt: string, location: string, comment: string, order: number, blob?: Blob, objectUrl?: string }} PhotoMeta */
   /** @typedef {{ schemaVersion: number, reportId: string, title: string, surveyDate: string, location: string, memo: string, updatedAt: string, photos: PhotoMeta[] }} ReportData */
 
   /** @type {ReportData | null} */
@@ -123,13 +123,14 @@
     });
 
     photos.sort((a, b) => a.order - b.order);
+    const legacyReportLocation = meta.location || '';
     /** @type {ReportData} */
     const report = {
       schemaVersion: SCHEMA_VERSION,
       reportId: meta.reportId,
       title: meta.title,
       surveyDate: meta.surveyDate,
-      location: meta.location || '',
+      location: '',
       memo: meta.memo || '',
       updatedAt: meta.updatedAt,
       photos: photos.map((p) => ({
@@ -137,6 +138,7 @@
         file: p.file || '',
         fileName: p.fileName,
         takenAt: p.takenAt,
+        location: p.location || legacyReportLocation || '',
         comment: p.comment || '',
         order: p.order,
         blob: p.blob,
@@ -176,6 +178,7 @@
             file: p.file,
             fileName: p.fileName,
             takenAt: p.takenAt,
+            location: p.location || '',
             comment: p.comment,
             order: p.order,
           });
@@ -347,6 +350,7 @@
         file: p.file || `images/photo_${String(i + 1).padStart(3, '0')}.jpg`,
         fileName: p.fileName,
         takenAt: p.takenAt,
+        location: p.location || '',
         comment: p.comment,
         order: i,
       }));
@@ -355,7 +359,7 @@
       reportId: report.reportId,
       title: report.title,
       surveyDate: report.surveyDate,
-      location: report.location,
+      location: '',
       memo: report.memo,
       updatedAt: report.updatedAt,
       photos,
@@ -484,7 +488,7 @@
               <li>
                 <div>
                   <strong>${escapeHtml(r.title || '無題')}</strong>
-                  <div class="meta">${escapeHtml(r.surveyDate || '')} · ${escapeHtml(r.location || '')}</div>
+                  <div class="meta">${escapeHtml(r.surveyDate || '')}</div>
                 </div>
                 <div class="btn-row" style="margin:0">
                   <button type="button" data-open="${r.reportId}">開く</button>
@@ -565,8 +569,10 @@
               (p, idx) => `
           <li class="photo-item" data-photo-id="${p.id}">
             <img src="${p.objectUrl || p.file}" alt="" />
-            <label>コメント</label>
-            <textarea data-comment="${p.id}">${escapeHtml(p.comment)}</textarea>
+            <label for="loc-${p.id}">場所</label>
+            <input type="text" id="loc-${p.id}" data-location="${p.id}" value="${escapeHtml(p.location)}" placeholder="例: 2F 北側外壁" />
+            <label for="cmt-${p.id}">コメント</label>
+            <textarea id="cmt-${p.id}" data-comment="${p.id}">${escapeHtml(p.comment)}</textarea>
             <div class="row">
               <button type="button" data-up="${p.id}" ${idx === 0 ? 'disabled' : ''}>上へ</button>
               <button type="button" data-down="${p.id}" ${idx === photos.length - 1 ? 'disabled' : ''}>下へ</button>
@@ -577,24 +583,20 @@
             .join('')}</ul>`;
 
     appEl.innerHTML = `
-      <h1>レポート編集</h1>
+      <h1>レポート作成編集</h1>
       <p class="lead">変更は自動保存されます（${saveUiState === 'saving' ? '保存中…' : '完了時に通知'}）</p>
+      <label class="file-btn hero-add-photo primary" for="photo-input">撮影 / 写真を追加</label>
+      <input type="file" id="photo-input" accept="image/*" capture="environment" multiple />
       <div class="card">
         <label for="f-title">タイトル</label>
         <input id="f-title" type="text" value="${escapeHtml(r.title)}" />
         <label for="f-date">調査日</label>
         <input id="f-date" type="date" value="${escapeHtml(r.surveyDate)}" />
-        <label for="f-loc">場所</label>
-        <input id="f-loc" type="text" value="${escapeHtml(r.location)}" />
         <label for="f-memo">メモ（任意）</label>
         <textarea id="f-memo">${escapeHtml(r.memo)}</textarea>
       </div>
       <div class="card">
-        <h2>写真</h2>
-        <div class="btn-row">
-          <label class="file-btn primary" for="photo-input">撮影 / 写真を追加</label>
-          <input type="file" id="photo-input" accept="image/*" capture="environment" multiple />
-        </div>
+        <h2>写真一覧</h2>
         ${photoHtml}
       </div>
       <div class="toolbar">
@@ -612,7 +614,6 @@
     };
     bindField('f-title', 'title');
     bindField('f-date', 'surveyDate');
-    bindField('f-loc', 'location');
     bindField('f-memo', 'memo');
 
     document.getElementById('btn-back').onclick = () => renderList();
@@ -633,6 +634,7 @@
             file: '',
             fileName,
             takenAt: isoNow(),
+            location: '',
             comment: '',
             order: order++,
             blob,
@@ -645,6 +647,17 @@
       } catch (e) {
         setSaveToast('err', e instanceof Error ? e.message : '追加失敗');
       }
+    });
+
+    appEl.querySelectorAll('[data-location]').forEach((input) => {
+      input.addEventListener('input', () => {
+        const id = input.getAttribute('data-location');
+        const p = currentReport.photos.find((x) => x.id === id);
+        if (p) {
+          p.location = input.value;
+          schedulePersist();
+        }
+      });
     });
 
     appEl.querySelectorAll('[data-comment]').forEach((ta) => {
@@ -721,6 +734,7 @@
         return `
         <article class="print-record">
           <div class="num">${i + 1}</div>
+          ${p.location ? `<p class="photo-location"><strong>場所:</strong> ${escapeHtml(p.location)}</p>` : ''}
           <img src="${escapeHtml(src)}" alt="写真${i + 1}" />
           <p class="comment">${escapeHtml(p.comment) || '（コメントなし）'}</p>
         </article>`;
@@ -734,8 +748,10 @@
               (p, idx) => `
           <li class="photo-item" data-photo-id="${p.id}">
             <img src="${p.objectUrl || p.file}" alt="" />
+            <label>場所</label>
+            <input type="text" data-pc-location="${p.id}" value="${escapeHtml(p.location)}" ${editable ? '' : 'readonly'} />
             <label>コメント</label>
-            <textarea data-pc-comment="${p.id}">${escapeHtml(p.comment)}</textarea>
+            <textarea data-pc-comment="${p.id}" ${editable ? '' : 'readonly'}>${escapeHtml(p.comment)}</textarea>
             <div class="row">
               <button type="button" data-pc-up="${p.id}" ${idx === 0 ? 'disabled' : ''}>上へ</button>
               <button type="button" data-pc-down="${p.id}" ${idx === photos.length - 1 ? 'disabled' : ''}>下へ</button>
@@ -749,7 +765,7 @@
     appEl.innerHTML = `
       <div class="toolbar no-print">
         <button type="button" id="pc-toggle">${editable ? '閲覧モード' : '編集モード'}</button>
-        <label class="file-btn" for="pc-add-photo">写真を追加</label>
+        <label class="file-btn hero-add-photo primary" for="pc-add-photo">撮影 / 写真を追加</label>
         <input type="file" id="pc-add-photo" accept="image/*" multiple />
         <button type="button" class="primary" id="pc-reexport">更新ZIPを出力</button>
         <button type="button" id="pc-print">印刷 / PDF</button>
@@ -759,8 +775,6 @@
         <input id="pc-title" type="text" value="${escapeHtml(report.title)}" ${editable ? '' : 'readonly'} />
         <label>調査日</label>
         <input id="pc-date" type="date" value="${escapeHtml(report.surveyDate)}" ${editable ? '' : 'readonly'} />
-        <label>場所</label>
-        <input id="pc-loc" type="text" value="${escapeHtml(report.location)}" ${editable ? '' : 'readonly'} />
         <label>メモ</label>
         <textarea id="pc-memo" ${editable ? '' : 'readonly'}>${escapeHtml(report.memo)}</textarea>
       </div>
@@ -770,7 +784,6 @@
           <h1>${escapeHtml(report.title)}</h1>
           <dl>
             <dt>調査日</dt><dd>${escapeHtml(report.surveyDate)}</dd>
-            <dt>場所</dt><dd>${escapeHtml(report.location || '—')}</dd>
             <dt>更新</dt><dd>${escapeHtml(report.updatedAt)}</dd>
           </dl>
           ${report.memo ? `<p>${escapeHtml(report.memo)}</p>` : ''}
@@ -785,14 +798,24 @@
       if (!editable) return;
       report.title = /** @type {HTMLInputElement} */ (document.getElementById('pc-title')).value;
       report.surveyDate = /** @type {HTMLInputElement} */ (document.getElementById('pc-date')).value;
-      report.location = /** @type {HTMLInputElement} */ (document.getElementById('pc-loc')).value;
       report.memo = /** @type {HTMLTextAreaElement} */ (document.getElementById('pc-memo')).value;
       report.updatedAt = isoNow();
     };
 
-    ['pc-title', 'pc-date', 'pc-loc', 'pc-memo'].forEach((id) => {
+    ['pc-title', 'pc-date', 'pc-memo'].forEach((id) => {
       const el = document.getElementById(id);
       el.addEventListener('input', syncFields);
+    });
+
+    appEl.querySelectorAll('[data-pc-location]').forEach((input) => {
+      input.addEventListener('input', () => {
+        const id = input.getAttribute('data-pc-location');
+        const p = report.photos.find((x) => x.id === id);
+        if (p) {
+          p.location = input.value;
+          report.updatedAt = isoNow();
+        }
+      });
     });
 
     appEl.querySelectorAll('[data-pc-comment]').forEach((ta) => {
@@ -852,6 +875,7 @@
           file: '',
           fileName,
           takenAt: isoNow(),
+          location: '',
           comment: '',
           order: order++,
           blob,
@@ -898,14 +922,21 @@
       location: data.location || '',
       memo: data.memo || '',
       updatedAt: data.updatedAt || isoNow(),
-      photos: (data.photos || []).map((p) => ({
-        id: p.id,
-        file: p.file,
-        fileName: p.fileName || p.file,
-        takenAt: p.takenAt,
-        comment: p.comment || '',
-        order: p.order,
-      })),
+      photos: (data.photos || []).map((p, i, arr) => {
+        const legacyReportLocation = data.location || '';
+        const onlyOne = arr.length === 1;
+        return {
+          id: p.id,
+          file: p.file,
+          fileName: p.fileName || p.file,
+          takenAt: p.takenAt,
+          location:
+            p.location ||
+            (legacyReportLocation && onlyOne && i === 0 ? legacyReportLocation : ''),
+          comment: p.comment || '',
+          order: p.order,
+        };
+      }),
     };
     renderPcView(report, false);
   }
