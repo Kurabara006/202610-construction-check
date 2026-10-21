@@ -224,66 +224,126 @@
 
   function readExifOrientation(arrayBuffer) {
     const view = new DataView(arrayBuffer);
-    if (view.getUint16(0, false) !== 0xffd8) return 1;
+    if (view.byteLength < 4 || view.getUint16(0, false) !== 0xffd8) return 1;
     let offset = 2;
     const length = view.byteLength;
-    while (offset < length) {
-      if (view.getUint16(offset, false) !== 0xffe1) {
-        offset += 2 + view.getUint16(offset + 2, false);
+    while (offset + 4 < length) {
+      if (view.getUint8(offset) !== 0xff) break;
+      const marker = view.getUint8(offset + 1);
+      if (marker === 0xd8 || marker === 0xd9) {
+        offset += 2;
         continue;
       }
-      const exifOffset = offset + 4;
-      if (view.getUint32(exifOffset, false) !== 0x45786966) return 1;
-      const tiff = exifOffset + 6;
-      const little = view.getUint16(tiff, false) === 0x4949;
-      const ifdOffset = view.getUint32(tiff + 4, little);
-      const ifd = tiff + ifdOffset;
-      const entries = view.getUint16(ifd, little);
-      for (let i = 0; i < entries; i++) {
-        const entry = ifd + 2 + i * 12;
-        if (view.getUint16(entry, little) === 0x0112) {
-          return view.getUint16(entry + 8, little) || 1;
+      const segLen = view.getUint16(offset + 2, false);
+      if (segLen < 2) break;
+      if (marker === 0xe1 && offset + 4 + 6 < length) {
+        const exifOffset = offset + 4;
+        if (view.getUint32(exifOffset, false) === 0x45786966) {
+          const tiff = exifOffset + 6;
+          const little = view.getUint16(tiff, false) === 0x4949;
+          const ifdOffset = view.getUint32(tiff + 4, little);
+          const ifd = tiff + ifdOffset;
+          if (ifd + 2 <= length) {
+            const entries = view.getUint16(ifd, little);
+            for (let i = 0; i < entries; i++) {
+              const entry = ifd + 2 + i * 12;
+              if (entry + 12 > length) break;
+              if (view.getUint16(entry, little) === 0x0112) {
+                const val = view.getUint16(entry + 8, little);
+                return val >= 1 && val <= 8 ? val : 1;
+              }
+            }
+          }
         }
       }
-      break;
+      offset += 2 + segLen;
     }
     return 1;
   }
 
-  function applyOrientation(ctx, orientation, width, height) {
+  /**
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {CanvasImageSource} img
+   * @param {number} orientation EXIF 1–8
+   * @param {number} targetW
+   * @param {number} targetH
+   * @param {number} srcW intrinsic width
+   * @param {number} srcH intrinsic height
+   */
+  function drawImageWithExifOrientation(
+    ctx,
+    img,
+    orientation,
+    targetW,
+    targetH,
+    srcW,
+    srcH,
+  ) {
+    ctx.save();
     switch (orientation) {
       case 2:
-        ctx.translate(width, 0);
-        ctx.scale(-1, 1);
+        ctx.transform(-1, 0, 0, 1, targetW, 0);
         break;
       case 3:
-        ctx.translate(width, height);
-        ctx.rotate(Math.PI);
+        ctx.transform(-1, 0, 0, -1, targetW, targetH);
         break;
       case 4:
-        ctx.translate(0, height);
-        ctx.scale(1, -1);
+        ctx.transform(1, 0, 0, -1, 0, targetH);
         break;
       case 5:
-        ctx.rotate(0.5 * Math.PI);
-        ctx.scale(1, -1);
+        ctx.transform(0, 1, 1, 0, 0, 0);
         break;
       case 6:
-        ctx.rotate(0.5 * Math.PI);
-        ctx.translate(0, -height);
+        ctx.transform(0, 1, -1, 0, targetH, 0);
         break;
       case 7:
-        ctx.rotate(0.5 * Math.PI);
-        ctx.translate(width, -height);
-        ctx.scale(-1, 1);
+        ctx.transform(0, -1, -1, 0, targetH, targetW);
         break;
       case 8:
-        ctx.rotate(-0.5 * Math.PI);
-        ctx.translate(-width, 0);
+        ctx.transform(0, -1, 1, 0, 0, targetW);
         break;
       default:
         break;
     }
+    ctx.drawImage(img, 0, 0, srcW, srcH, 0, 0, targetW, targetH);
+    ctx.restore();
+  }
+
+  /**
+   * @param {Blob} blob
+   * @returns {Promise<{ width: number, height: number, draw: Function, cleanup?: Function }>}
+   */
+  async function loadOrientedImageSource(blob) {
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const bitmap = await createImageBitmap(blob, {
+          imageOrientation: 'from-image',
+        });
+        return {
+          width: bitmap.width,
+          height: bitmap.height,
+          draw: (ctx, dw, dh) => ctx.drawImage(bitmap, 0, 0, dw, dh),
+          cleanup: () => bitmap.close(),
+        };
+      } catch {
+        /* createImageBitmap 非対応形式など */
+      }
+    }
+
+    const buf = await blob.arrayBuffer();
+    const orientation = readExifOrientation(buf);
+    const url = URL.createObjectURL(blob);
+    const img = await loadImage(url);
+    const srcW = img.naturalWidth;
+    const srcH = img.naturalHeight;
+    const swap = orientation >= 5 && orientation <= 8;
+    return {
+      width: swap ? srcH : srcW,
+      height: swap ? srcW : srcH,
+      draw: (ctx, dw, dh) =>
+        drawImageWithExifOrientation(ctx, img, orientation, dw, dh, srcW, srcH),
+      cleanup: () => URL.revokeObjectURL(url),
+    };
   }
 
   /**
@@ -291,31 +351,20 @@
    * @returns {Promise<{ blob: Blob, fileName: string }>}
    */
   async function processImageFile(file) {
-    const buf = await file.arrayBuffer();
-    const orientation = readExifOrientation(buf);
-    const blob = new Blob([buf], { type: file.type || 'image/jpeg' });
-    const url = URL.createObjectURL(blob);
+    const blob = new Blob([await file.arrayBuffer()], {
+      type: file.type || 'image/jpeg',
+    });
+    const source = await loadOrientedImageSource(blob);
     try {
-      const img = await loadImage(url);
-      let w = img.naturalWidth;
-      let h = img.naturalHeight;
-      const swap = orientation >= 5 && orientation <= 8;
-      const srcW = swap ? h : w;
-      const srcH = swap ? w : h;
-      const scale = Math.min(1, MAX_LONG_EDGE / Math.max(srcW, srcH));
-      const dstW = Math.round(srcW * scale);
-      const dstH = Math.round(srcH * scale);
+      const scale = Math.min(1, MAX_LONG_EDGE / Math.max(source.width, source.height));
+      const dstW = Math.round(source.width * scale);
+      const dstH = Math.round(source.height * scale);
       const canvas = document.createElement('canvas');
       canvas.width = dstW;
       canvas.height = dstH;
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas not supported');
-      ctx.save();
-      applyOrientation(ctx, orientation, dstW, dstH);
-      const drawW = swap ? dstH : dstW;
-      const drawH = swap ? dstW : dstH;
-      ctx.drawImage(img, 0, 0, drawW, drawH);
-      ctx.restore();
+      source.draw(ctx, dstW, dstH);
       const outBlob = await new Promise((resolve, reject) => {
         canvas.toBlob(
           (b) => (b ? resolve(b) : reject(new Error('画像変換に失敗'))),
@@ -326,7 +375,7 @@
       const base = (file.name || 'photo').replace(/\.[^.]+$/, '');
       return { blob: outBlob, fileName: `${base}.jpg` };
     } finally {
-      URL.revokeObjectURL(url);
+      source.cleanup?.();
     }
   }
 
