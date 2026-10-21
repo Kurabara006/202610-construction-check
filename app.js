@@ -630,10 +630,8 @@
         appEl.innerHTML = `
           <h1>写真・コメント記録</h1>
           <p class="lead">撮影とコメントを端末内に保存し、ZIPでPCへ持ち出して印刷できます。</p>
-          <div class="card no-print">
-            <button type="button" class="primary" id="btn-new-report">新規レポート</button>
-            <p class="hint">IndexedDB は永続保証ではありません。定期的に ZIP バックアップを取ってください。</p>
-          </div>
+          <button type="button" class="primary hero-new-report" id="btn-new-report">新規レポート</button>
+          <p class="hint">IndexedDB は永続保証ではありません。定期的に ZIP バックアップを取ってください。</p>
           ${items}
         `;
 
@@ -712,8 +710,13 @@
             .join('')}</ul>`;
 
     appEl.innerHTML = `
-      <h1>レポート作成編集</h1>
-      <p class="lead">変更は自動保存されます（${saveUiState === 'saving' ? '保存中…' : '完了時に通知'}）</p>
+      <header class="page-header">
+        <div class="page-header-row">
+          <h1>レポート作成編集</h1>
+          <button type="button" class="btn-back-list" id="btn-back">一覧へ</button>
+        </div>
+        <p class="lead">変更は自動保存されます（${saveUiState === 'saving' ? '保存中…' : '完了時に通知'}）</p>
+      </header>
       <div class="photo-add-actions">
         <label class="file-btn hero-add-photo primary" for="photo-capture">撮影</label>
         <input type="file" id="photo-capture" accept="image/*" capture="environment" />
@@ -733,7 +736,6 @@
         ${photoHtml}
       </div>
       <div class="toolbar">
-        <button type="button" id="btn-back">一覧へ</button>
         <button type="button" class="primary" id="btn-export-zip">ZIP出力</button>
       </div>
     `;
