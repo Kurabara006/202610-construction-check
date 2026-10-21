@@ -631,7 +631,10 @@
           <h1>写真・コメント記録</h1>
           <p class="lead">撮影とコメントを端末内に保存し、ZIPでPCへ持ち出して印刷できます。</p>
           <button type="button" class="primary hero-new-report" id="btn-new-report">新規レポート</button>
-          <p class="hint">IndexedDB は永続保証ではありません。定期的に ZIP バックアップを取ってください。</p>
+          <div class="hint-block">
+            <p class="hint"><strong>保存場所:</strong> 撮影・追加した写真は、端末の「写真」アプリのフォルダには<strong>自動では入りません</strong>。このサイトを開いている<strong>ブラウザ内</strong>（アプリの記録領域）に保存されます。機種によってはカメラ撮影時に OS がカメラロールへ残すことがありますが、報告用データの正本はブラウザ内です。</p>
+            <p class="hint"><strong>バックアップ:</strong> 長期保管・PC 利用は、各レポートの<strong> ZIP 出力</strong>で端末のダウンロードフォルダ等へ保存してください。ブラウザのデータ削除やキャッシュクリアで記録が消えることがあります。</p>
+          </div>
           ${items}
         `;
 

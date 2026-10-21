@@ -322,6 +322,18 @@ input[type='file'] {
   background: #b71c1c;
 }
 
+.hint-block {
+  margin: 10px 0 16px;
+}
+
+.hint-block .hint {
+  margin: 0 0 6px;
+}
+
+.hint-block .hint:last-child {
+  margin-bottom: 0;
+}
+
 .hint {
   font-size: 0.78rem;
   color: var(--muted);
