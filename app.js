@@ -471,6 +471,86 @@
     }, DEBOUNCE_MS);
   }
 
+  /** @param {File[]} files */
+  async function appendPhotosToCurrentReport(files) {
+    if (!currentReport || !files.length) return;
+    try {
+      setSaveToast('saving', '画像処理中…');
+      let order = currentReport.photos.length;
+      for (const file of files) {
+        const { blob, fileName } = await processImageFile(file);
+        currentReport.photos.push({
+          id: uid(),
+          file: '',
+          fileName,
+          takenAt: isoNow(),
+          location: '',
+          comment: '',
+          order: order++,
+          blob,
+          objectUrl: URL.createObjectURL(blob),
+        });
+      }
+      await persistReport(currentReport);
+      renderEdit();
+    } catch (e) {
+      setSaveToast('err', e instanceof Error ? e.message : '追加失敗');
+    }
+  }
+
+  /**
+   * @param {ReportData} report
+   * @param {File[]} files
+   * @param {boolean} editable
+   */
+  async function appendPhotosToPcReport(report, files, editable) {
+    if (!files.length) return;
+    try {
+      setSaveToast('saving', '画像処理中…');
+      let order = report.photos.length;
+      for (const file of files) {
+        const { blob, fileName } = await processImageFile(file);
+        report.photos.push({
+          id: uid(),
+          file: '',
+          fileName,
+          takenAt: isoNow(),
+          location: '',
+          comment: '',
+          order: order++,
+          blob,
+          objectUrl: URL.createObjectURL(blob),
+        });
+      }
+      report.updatedAt = isoNow();
+      renderPcView(report, editable);
+      setSaveToast('ok', '写真を追加しました');
+    } catch (e) {
+      setSaveToast('err', e instanceof Error ? e.message : '追加失敗');
+    }
+  }
+
+  function bindPhotoInputs(captureId, pickId) {
+    const capture = document.getElementById(captureId);
+    const pick = document.getElementById(pickId);
+    if (capture) {
+      capture.addEventListener('change', async (ev) => {
+        const input = /** @type {HTMLInputElement} */ (ev.target);
+        const files = input.files ? [...input.files] : [];
+        input.value = '';
+        await appendPhotosToCurrentReport(files);
+      });
+    }
+    if (pick) {
+      pick.addEventListener('change', async (ev) => {
+        const input = /** @type {HTMLInputElement} */ (ev.target);
+        const files = input.files ? [...input.files] : [];
+        input.value = '';
+        await appendPhotosToCurrentReport(files);
+      });
+    }
+  }
+
   function renderList() {
     mode = 'list';
     currentReport = null;
@@ -563,12 +643,12 @@
 
     const photoHtml =
       photos.length === 0
-        ? '<p class="empty">写真がありません。撮影または選択してください。</p>'
+        ? '<p class="empty">写真がありません。撮影するか、デバイスから追加してください。</p>'
         : `<ul class="photo-list">${photos
             .map(
               (p, idx) => `
           <li class="photo-item" data-photo-id="${p.id}">
-            <img src="${p.objectUrl || p.file}" alt="" />
+            <div class="photo-thumb-square"><img src="${p.objectUrl || p.file}" alt="" /></div>
             <label for="loc-${p.id}">場所</label>
             <input type="text" id="loc-${p.id}" data-location="${p.id}" value="${escapeHtml(p.location)}" placeholder="例: 2F 北側外壁" />
             <label for="cmt-${p.id}">コメント</label>
@@ -585,8 +665,12 @@
     appEl.innerHTML = `
       <h1>レポート作成編集</h1>
       <p class="lead">変更は自動保存されます（${saveUiState === 'saving' ? '保存中…' : '完了時に通知'}）</p>
-      <label class="file-btn hero-add-photo primary" for="photo-input">撮影 / 写真を追加</label>
-      <input type="file" id="photo-input" accept="image/*" capture="environment" multiple />
+      <div class="photo-add-actions">
+        <label class="file-btn hero-add-photo primary" for="photo-capture">撮影</label>
+        <input type="file" id="photo-capture" accept="image/*" capture="environment" />
+        <label class="file-btn add-from-device" for="photo-pick">デバイスから追加</label>
+        <input type="file" id="photo-pick" accept="image/*" multiple />
+      </div>
       <div class="card">
         <label for="f-title">タイトル</label>
         <input id="f-title" type="text" value="${escapeHtml(r.title)}" />
@@ -617,37 +701,7 @@
     bindField('f-memo', 'memo');
 
     document.getElementById('btn-back').onclick = () => renderList();
-
-    document.getElementById('photo-input').addEventListener('change', async (ev) => {
-      const input = /** @type {HTMLInputElement} */ (ev.target);
-      const files = input.files ? [...input.files] : [];
-      input.value = '';
-      if (!files.length || !currentReport) return;
-      try {
-        setSaveToast('saving', '画像処理中…');
-        let order = currentReport.photos.length;
-        for (const file of files) {
-          const { blob, fileName } = await processImageFile(file);
-          const id = uid();
-          const photo = {
-            id,
-            file: '',
-            fileName,
-            takenAt: isoNow(),
-            location: '',
-            comment: '',
-            order: order++,
-            blob,
-            objectUrl: URL.createObjectURL(blob),
-          };
-          currentReport.photos.push(photo);
-        }
-        await persistReport(currentReport);
-        renderEdit();
-      } catch (e) {
-        setSaveToast('err', e instanceof Error ? e.message : '追加失敗');
-      }
-    });
+    bindPhotoInputs('photo-capture', 'photo-pick');
 
     appEl.querySelectorAll('[data-location]').forEach((input) => {
       input.addEventListener('input', () => {
@@ -747,7 +801,7 @@
             .map(
               (p, idx) => `
           <li class="photo-item" data-photo-id="${p.id}">
-            <img src="${p.objectUrl || p.file}" alt="" />
+            <div class="photo-thumb-square"><img src="${p.objectUrl || p.file}" alt="" /></div>
             <label>場所</label>
             <input type="text" data-pc-location="${p.id}" value="${escapeHtml(p.location)}" ${editable ? '' : 'readonly'} />
             <label>コメント</label>
@@ -765,8 +819,14 @@
     appEl.innerHTML = `
       <div class="toolbar no-print">
         <button type="button" id="pc-toggle">${editable ? '閲覧モード' : '編集モード'}</button>
-        <label class="file-btn hero-add-photo primary" for="pc-add-photo">撮影 / 写真を追加</label>
-        <input type="file" id="pc-add-photo" accept="image/*" multiple />
+      </div>
+      <div class="photo-add-actions no-print">
+        <label class="file-btn hero-add-photo primary" for="pc-capture">撮影</label>
+        <input type="file" id="pc-capture" accept="image/*" capture="environment" />
+        <label class="file-btn add-from-device" for="pc-pick">デバイスから追加</label>
+        <input type="file" id="pc-pick" accept="image/*" multiple />
+      </div>
+      <div class="toolbar no-print">
         <button type="button" class="primary" id="pc-reexport">更新ZIPを出力</button>
         <button type="button" id="pc-print">印刷 / PDF</button>
       </div>
@@ -862,29 +922,24 @@
       btn.addEventListener('click', () => pcSwap(btn.getAttribute('data-pc-down'), 1));
     });
 
-    document.getElementById('pc-add-photo').addEventListener('change', async (ev) => {
-      const input = /** @type {HTMLInputElement} */ (ev.target);
-      const files = input.files ? [...input.files] : [];
-      input.value = '';
-      if (!files.length) return;
-      let order = report.photos.length;
-      for (const file of files) {
-        const { blob, fileName } = await processImageFile(file);
-        report.photos.push({
-          id: uid(),
-          file: '',
-          fileName,
-          takenAt: isoNow(),
-          location: '',
-          comment: '',
-          order: order++,
-          blob,
-          objectUrl: URL.createObjectURL(blob),
-        });
-      }
-      report.updatedAt = isoNow();
-      renderPcView(report, true);
-    });
+    const pcCapture = document.getElementById('pc-capture');
+    const pcPick = document.getElementById('pc-pick');
+    if (pcCapture) {
+      pcCapture.addEventListener('change', async (ev) => {
+        const input = /** @type {HTMLInputElement} */ (ev.target);
+        const files = input.files ? [...input.files] : [];
+        input.value = '';
+        await appendPhotosToPcReport(report, files, editable);
+      });
+    }
+    if (pcPick) {
+      pcPick.addEventListener('change', async (ev) => {
+        const input = /** @type {HTMLInputElement} */ (ev.target);
+        const files = input.files ? [...input.files] : [];
+        input.value = '';
+        await appendPhotosToPcReport(report, files, editable);
+      });
+    }
 
     document.getElementById('pc-reexport').onclick = async () => {
       syncFields();
