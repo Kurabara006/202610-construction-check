@@ -9,6 +9,7 @@
   --danger: #ff3b30;
   --ok: #34c759;
   --radius: 10px;
+  --shadow: 0 1px 3px rgb(0 0 0 / 8%);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   line-height: 1.45;
   color: var(--text);
@@ -33,6 +34,58 @@ body {
 h1 {
   font-size: 1.25rem;
   margin: 0 0 4px;
+}
+
+.page-header {
+  margin-bottom: 4px;
+}
+
+.page-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.page-header-row h1 {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+
+.page-header .lead {
+  margin-top: 4px;
+}
+
+.btn-back-list {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.btn-back-list:active {
+  background: var(--bg);
+}
+
+.hero-new-report {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  padding: 20px 16px;
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: none;
+}
+
+.hero-new-report:active {
+  transform: scale(0.99);
 }
 
 .lead {
