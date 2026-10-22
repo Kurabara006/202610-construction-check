@@ -307,8 +307,10 @@ input[type='file'] {
 }
 
 .photo-thumb-square img {
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   object-position: center;
 }
@@ -452,15 +454,23 @@ input[type='file'] {
 .output-record-photo {
   flex: 0 0 40%;
   max-width: 40%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  overflow: hidden;
 }
 
 .output-record-photo img {
-  width: 100%;
-  max-height: 280px;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: #f0f0f0;
+  object-position: center;
 }
 
 .output-record-text {
@@ -513,6 +523,7 @@ input[type='file'] {
     flex: none;
     max-width: 100%;
     width: 100%;
+    aspect-ratio: 1 / 1;
   }
 
   .output-record-text {
@@ -546,8 +557,25 @@ input[type='file'] {
     padding: 0;
   }
 
-  .print-record {
+  .print-record,
+  .output-record {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .output-record-row {
+    flex-direction: row !important;
+  }
+
+  .output-record-photo {
+    flex: 0 0 40% !important;
+    max-width: 40% !important;
+    width: auto !important;
+    aspect-ratio: 1 / 1;
+  }
+
+  .output-record-text {
+    flex: 1 1 60% !important;
+    width: auto !important;
   }
 }
