@@ -600,6 +600,30 @@
     }
   }
 
+  function currentPageUrlForQr() {
+    const u = new URL(window.location.href);
+    u.search = '';
+    u.hash = '';
+    return u.href;
+  }
+
+  function renderTopPageQr() {
+    const mount = document.getElementById('page-qr');
+    if (!mount || typeof QRCode === 'undefined') return;
+    mount.textContent = '';
+    const url = currentPageUrlForQr();
+    new QRCode(mount, {
+      text: url,
+      width: 128,
+      height: 128,
+      colorDark: '#1c1c1e',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+    const urlEl = document.getElementById('page-qr-url');
+    if (urlEl) urlEl.textContent = url;
+  }
+
   function renderList() {
     mode = 'list';
     currentReport = null;
@@ -632,6 +656,11 @@
           <p class="lead">撮影とコメントを端末内に保存し、ZIPでPCへ持ち出して印刷できます。</p>
           <button type="button" class="primary hero-new-report" id="btn-new-report">新規レポート</button>
           ${items}
+          <section class="card qr-share" aria-labelledby="qr-share-title">
+            <h2 id="qr-share-title" class="qr-share-title">このページを開く QR</h2>
+            <div id="page-qr" class="page-qr" role="img" aria-label="現在開いているページのURL"></div>
+            <p id="page-qr-url" class="hint qr-url"></p>
+          </section>
           <div class="hint-block">
             <p class="hint"><strong>保存場所:</strong> 撮影・追加した写真は、端末の「写真」アプリのフォルダには<strong>自動では入りません</strong>。このサイトを開いている<strong>ブラウザ内</strong>（アプリの記録領域）に保存されます。機種によってはカメラ撮影時に OS がカメラロールへ残すことがありますが、報告用データの正本はブラウザ内です。</p>
             <p class="hint"><strong>バックアップ:</strong> 長期保管・PC 利用は、各レポートの<strong> ZIP 出力</strong>で端末のダウンロードフォルダ等へ保存してください。ブラウザのデータ削除やキャッシュクリアで記録が消えることがあります。</p>
@@ -667,6 +696,8 @@
             renderList();
           });
         });
+
+        renderTopPageQr();
       })
       .catch(() => {
         appEl.innerHTML =
