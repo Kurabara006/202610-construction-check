@@ -219,6 +219,25 @@ input[type='file'] {
   background: var(--bg);
 }
 
+.device-save-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.device-save-toggle input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.device-save-hint {
+  margin: 6px 0 0;
+}
+
 .photo-item input[type='text'] {
   margin-bottom: 8px;
 }

@@ -503,8 +503,36 @@
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  const SAVE_TO_DEVICE_KEY = 'photo-report-save-to-device';
+
+  function isSaveCopyToDeviceEnabled() {
+    return localStorage.getItem(SAVE_TO_DEVICE_KEY) !== 'false';
+  }
+
+  function setSaveCopyToDeviceEnabled(enabled) {
+    localStorage.setItem(SAVE_TO_DEVICE_KEY, enabled ? 'true' : 'false');
+  }
+
+  /** @param {number} seq */
+  function devicePhotoDownloadName(seq) {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `site-photo_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}_${String(seq).padStart(2, '0')}.jpg`;
+  }
+
+  /** @param {{ blob: Blob }[]} added @param {number} startSeq */
+  function saveAddedPhotosToDevice(added, startSeq) {
+    if (!isSaveCopyToDeviceEnabled() || !added.length) return;
+    added.forEach((item, i) => {
+      downloadBlob(item.blob, devicePhotoDownloadName(startSeq + i));
+    });
   }
 
   // --- UI ---
@@ -526,8 +554,12 @@
     try {
       setSaveToast('saving', '画像処理中…');
       let order = currentReport.photos.length;
+      const startSeq = order + 1;
+      /** @type {{ blob: Blob }[]} */
+      const added = [];
       for (const file of files) {
         const { blob, fileName } = await processImageFile(file);
+        added.push({ blob });
         currentReport.photos.push({
           id: uid(),
           file: '',
@@ -541,6 +573,7 @@
         });
       }
       await persistReport(currentReport);
+      saveAddedPhotosToDevice(added, startSeq);
       renderEdit();
     } catch (e) {
       setSaveToast('err', e instanceof Error ? e.message : '追加失敗');
@@ -557,8 +590,12 @@
     try {
       setSaveToast('saving', '画像処理中…');
       let order = report.photos.length;
+      const startSeq = order + 1;
+      /** @type {{ blob: Blob }[]} */
+      const added = [];
       for (const file of files) {
         const { blob, fileName } = await processImageFile(file);
+        added.push({ blob });
         report.photos.push({
           id: uid(),
           file: '',
@@ -572,6 +609,7 @@
         });
       }
       report.updatedAt = isoNow();
+      saveAddedPhotosToDevice(added, startSeq);
       renderPcView(report, editable);
       setSaveToast('ok', '写真を追加しました');
     } catch (e) {
@@ -662,7 +700,7 @@
             <p id="page-qr-url" class="hint qr-url"></p>
           </section>
           <div class="hint-block">
-            <p class="hint"><strong>保存場所:</strong> 撮影・追加した写真は、端末の「写真」アプリのフォルダには<strong>自動では入りません</strong>。このサイトを開いている<strong>ブラウザ内</strong>（アプリの記録領域）に保存されます。機種によってはカメラ撮影時に OS がカメラロールへ残すことがありますが、報告用データの正本はブラウザ内です。</p>
+            <p class="hint"><strong>保存場所:</strong> 報告用データの正本は<strong>ブラウザ内</strong>です。記録画面で「端末のダウンロードにも保存」を ON にすると、追加した加工済み JPEG が Downloads / ファイル等にも保存されます（写真アプリへ自動保存は Web では不可）。</p>
             <p class="hint"><strong>バックアップ:</strong> 長期保管・PC 利用は、各レポートの<strong> ZIP 出力</strong>で端末のダウンロードフォルダ等へ保存してください。ブラウザのデータ削除やキャッシュクリアで記録が消えることがあります。</p>
           </div>
         `;
@@ -756,6 +794,11 @@
         <input type="file" id="photo-capture" accept="image/*" capture="environment" />
         <label class="file-btn add-from-device" for="photo-pick">デバイスから追加</label>
         <input type="file" id="photo-pick" accept="image/*" multiple />
+        <label class="device-save-toggle">
+          <input type="checkbox" id="save-to-device" ${isSaveCopyToDeviceEnabled() ? 'checked' : ''} />
+          追加した写真を端末のダウンロードにも保存
+        </label>
+        <p class="hint device-save-hint">ブラウザ内保存に加え、画像ファイルを端末へも書き出します（Downloads / ファイル）。写真アプリへ直接入れる機能は Web の制約上ありません。</p>
       </div>
       <div class="card">
         <label for="f-title">タイトル</label>
@@ -787,6 +830,13 @@
 
     document.getElementById('btn-back').onclick = () => renderList();
     bindPhotoInputs('photo-capture', 'photo-pick');
+
+    const saveToDeviceEl = document.getElementById('save-to-device');
+    if (saveToDeviceEl) {
+      saveToDeviceEl.addEventListener('change', () => {
+        setSaveCopyToDeviceEnabled(/** @type {HTMLInputElement} */ (saveToDeviceEl).checked);
+      });
+    }
 
     appEl.querySelectorAll('[data-location]').forEach((input) => {
       input.addEventListener('input', () => {
