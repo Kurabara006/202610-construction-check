@@ -322,6 +322,31 @@ input[type='file'] {
   background: #b71c1c;
 }
 
+.qr-share {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.qr-share-title {
+  font-size: 0.9rem;
+  margin: 0 0 10px;
+}
+
+.page-qr {
+  display: inline-block;
+  line-height: 0;
+}
+
+.page-qr img {
+  display: block;
+  margin: 0 auto;
+}
+
+.qr-url {
+  word-break: break-all;
+  margin: 10px 0 0;
+}
+
 .hint-block {
   margin: 20px 0 0;
   padding-top: 8px;
