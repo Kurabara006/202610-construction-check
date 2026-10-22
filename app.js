@@ -22,6 +22,8 @@
   let mode = 'list';
   /** @type {boolean} */
   let pcEditMode = false;
+  /** @type {boolean} */
+  let editLayoutPreview = false;
 
   const appEl = document.getElementById('app');
   const toastEl = document.getElementById('save-toast');
@@ -535,6 +537,59 @@
     });
   }
 
+  // --- 出力・閲覧レイアウト（写真 40% / 文字 60%） ---
+
+  /** @param {PhotoMeta[]} photos */
+  function buildOutputRecordsHtml(photos) {
+    const sorted = [...photos].sort((a, b) => a.order - b.order);
+    return sorted
+      .map((p, i) => {
+        const src = p.objectUrl || p.file;
+        return `
+        <article class="output-record print-record">
+          <div class="output-record-num">${i + 1}</div>
+          <div class="output-record-row">
+            <div class="output-record-photo">
+              <img src="${escapeHtml(src)}" alt="写真 ${i + 1}" />
+            </div>
+            <div class="output-record-text">
+              ${
+                p.location
+                  ? `<p class="output-location"><span class="output-label">場所</span> ${escapeHtml(p.location)}</p>`
+                  : ''
+              }
+              <p class="output-comment">${escapeHtml(p.comment) || '（コメントなし）'}</p>
+            </div>
+          </div>
+        </article>`;
+      })
+      .join('');
+  }
+
+  /** @param {ReportData} report @param {{ extraClass?: string }} [opts] */
+  function buildReportOutputSheet(report, opts = {}) {
+    const extra = opts.extraClass ? ` ${opts.extraClass}` : '';
+    const memoBlock = report.memo
+      ? `<p class="print-memo">${escapeHtml(report.memo)}</p>`
+      : '';
+    return `
+      <section class="print-sheet${extra}">
+        <header class="print-header">
+          <h1>${escapeHtml(report.title)}</h1>
+          <dl>
+            <dt>調査日</dt><dd>${escapeHtml(report.surveyDate)}</dd>
+            <dt>更新</dt><dd>${escapeHtml(report.updatedAt)}</dd>
+          </dl>
+          ${memoBlock}
+        </header>
+        ${
+          report.photos.length
+            ? buildOutputRecordsHtml(report.photos)
+            : '<p class="empty">写真がありません。</p>'
+        }
+      </section>`;
+  }
+
   // --- UI ---
 
   let debounceTimer = null;
@@ -747,6 +802,7 @@
     try {
       currentReport = await loadReportFromDb(reportId);
       mode = 'edit';
+      editLayoutPreview = false;
       renderEdit();
     } catch (e) {
       alert(e instanceof Error ? e.message : '読み込み失敗');
@@ -756,8 +812,46 @@
 
   function renderEdit() {
     if (!currentReport) return;
-    appEl.className = 'app view-edit no-print';
     const r = currentReport;
+    appEl.className =
+      'app view-edit no-print' + (editLayoutPreview ? ' view-output-preview' : '');
+
+    if (editLayoutPreview) {
+      appEl.innerHTML = `
+      <header class="page-header">
+        <div class="page-header-row">
+          <h1>レポート作成編集</h1>
+          <div class="header-actions">
+            <button type="button" class="btn-back-list" id="btn-layout-edit">編集に戻る</button>
+            <button type="button" class="btn-back-list" id="btn-back">一覧へ</button>
+          </div>
+        </div>
+        <p class="lead">出力・印刷と同じレイアウトのプレビューです。</p>
+      </header>
+      ${buildReportOutputSheet(r, { extraClass: 'preview-sheet' })}
+      <div class="toolbar">
+        <button type="button" class="primary" id="btn-export-zip">ZIP出力</button>
+      </div>
+      `;
+      document.getElementById('btn-back').onclick = () => renderList();
+      document.getElementById('btn-layout-edit').onclick = () => {
+        editLayoutPreview = false;
+        renderEdit();
+      };
+      document.getElementById('btn-export-zip').onclick = async () => {
+        try {
+          setSaveToast('saving', 'ZIP作成中…');
+          const blob = await buildZipBlob(currentReport);
+          const stamp = currentReport.surveyDate || todayDateInput();
+          downloadBlob(blob, `report-${stamp}.zip`);
+          setSaveToast('ok', 'ZIPをダウンロードしました');
+        } catch (e) {
+          setSaveToast('err', e instanceof Error ? e.message : 'ZIP出力失敗');
+        }
+      };
+      return;
+    }
+
     const photos = [...r.photos].sort((a, b) => a.order - b.order);
 
     const photoHtml =
@@ -785,7 +879,10 @@
       <header class="page-header">
         <div class="page-header-row">
           <h1>レポート作成編集</h1>
-          <button type="button" class="btn-back-list" id="btn-back">一覧へ</button>
+          <div class="header-actions">
+            <button type="button" class="btn-back-list" id="btn-layout-preview">閲覧レイアウト</button>
+            <button type="button" class="btn-back-list" id="btn-back">一覧へ</button>
+          </div>
         </div>
         <p class="lead">変更は自動保存されます（${saveUiState === 'saving' ? '保存中…' : '完了時に通知'}）</p>
       </header>
@@ -829,6 +926,10 @@
     bindField('f-memo', 'memo');
 
     document.getElementById('btn-back').onclick = () => renderList();
+    document.getElementById('btn-layout-preview').onclick = () => {
+      editLayoutPreview = true;
+      renderEdit();
+    };
     bindPhotoInputs('photo-capture', 'photo-pick');
 
     const saveToDeviceEl = document.getElementById('save-to-device');
@@ -917,18 +1018,7 @@
 
     const photos = [...report.photos].sort((a, b) => a.order - b.order);
 
-    const printSection = photos
-      .map((p, i) => {
-        const src = p.objectUrl || p.file;
-        return `
-        <article class="print-record">
-          <div class="num">${i + 1}</div>
-          ${p.location ? `<p class="photo-location"><strong>場所:</strong> ${escapeHtml(p.location)}</p>` : ''}
-          <img src="${escapeHtml(src)}" alt="写真${i + 1}" />
-          <p class="comment">${escapeHtml(p.comment) || '（コメントなし）'}</p>
-        </article>`;
-      })
-      .join('');
+    const outputSheet = buildReportOutputSheet(report);
 
     const editPhotos =
       editable && photos.length
@@ -974,17 +1064,7 @@
         <textarea id="pc-memo" ${editable ? '' : 'readonly'}>${escapeHtml(report.memo)}</textarea>
       </div>
       ${editPhotos}
-      <section class="print-sheet">
-        <header class="print-header">
-          <h1>${escapeHtml(report.title)}</h1>
-          <dl>
-            <dt>調査日</dt><dd>${escapeHtml(report.surveyDate)}</dd>
-            <dt>更新</dt><dd>${escapeHtml(report.updatedAt)}</dd>
-          </dl>
-          ${report.memo ? `<p>${escapeHtml(report.memo)}</p>` : ''}
-        </header>
-        ${printSection}
-      </section>
+      ${outputSheet}
     `;
 
     document.getElementById('pc-toggle').onclick = () => renderPcView(report, !editable);
@@ -1099,6 +1179,7 @@
       renderPcView(report, editable);
       requestAnimationFrame(() => window.print());
     };
+
   }
 
   /** @param {object} data */
